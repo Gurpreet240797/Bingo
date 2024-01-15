@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from "react";
 
 function Square({ value, onSquareClick, isMarked }) {
-  const styles = isMarked ? { textDecorationLine: 'line-through', textDecorationStyle: 'solid' } : {};
-  return <button className="square" 
+  const styles = isMarked ? { filter: 'invert(100%)' } : {};
+  if (isMarked) {
+    return <button className="square" 
+            onClick={onSquareClick}
             style={styles}
+          >
+            {value}
+        </button>;
+  }
+  return <button className="square" 
             onClick={onSquareClick}
           >
             {value}
@@ -23,40 +30,15 @@ function SquareForPC() {
   return <button className="square">X</button>;  
 }
 
-function checkWinner(index, player) {
-  if (player === "Player") {
-    let lines = [
-      [0, 1, 2, 3, 4],
-      [5, 6, 7, 8, 9],
-      [10, 11, 12, 13, 14],
-      [15, 16, 17, 18, 19],
-      [20, 21, 22, 23, 24],
-      [0, 5, 10, 15, 20],
-      [1, 6, 11, 16, 21],
-      [2, 7, 12, 17, 22],
-      [3, 8, 13, 18, 23],
-      [4, 9, 14, 19, 24],
-      [0, 6, 12, 18, 24],
-      [4, 8, 12, 16, 20]
-    ];
-    lines = lines.map(line => line.filter(item => item !== index)); 
-  } else {
-    let linesPC = [
-      [0, 1, 2, 3, 4],
-      [5, 6, 7, 8, 9],
-      [10, 11, 12, 13, 14],
-      [15, 16, 17, 18, 19],
-      [20, 21, 22, 23, 24],
-      [0, 5, 10, 15, 20],
-      [1, 6, 11, 16, 21],
-      [2, 7, 12, 17, 22],
-      [3, 8, 13, 18, 23],
-      [4, 9, 14, 19, 24],
-      [0, 6, 12, 18, 24],
-      [4, 8, 12, 16, 20]
-    ];
-    linesPC = linesPC.map(line => line.filter(item => item !== index)); 
-  }
+function Progress({ handleProgress }) {
+  return <div className="alert alert-warning" 
+          role="alert">
+          {handleProgress()}
+      </div>
+}
+
+function Status({ handleChange }) {
+  return <h1 className="badge bg-success"style={{ "marginTop": "10px"}}>{handleChange()}</h1>
 }
 
 export default function Board() {
@@ -67,6 +49,72 @@ export default function Board() {
   const [instructions, setInstructions] = useState("Click to fill the values in the Box's between 1-25.");
   const [lineThrough, setLineThrough] = useState(Array(25).fill(false));
   const [playStarted, setPlayStarted] = useState(false);
+  const [countLines, setCountLines] = useState(0);
+  const [lines, setLines] = useState([
+        [0, 1, 2, 3, 4],
+        [5, 6, 7, 8, 9],
+        [10, 11, 12, 13, 14],
+        [15, 16, 17, 18, 19],
+        [20, 21, 22, 23, 24],
+        [0, 5, 10, 15, 20],
+        [1, 6, 11, 16, 21],
+        [2, 7, 12, 17, 22],
+        [3, 8, 13, 18, 23],
+        [4, 9, 14, 19, 24],
+        [0, 6, 12, 18, 24],
+        [4, 8, 12, 16, 20]
+      ]);
+  const [linesPC, setLinesPC] = useState([
+        [0, 1, 2, 3, 4],
+        [5, 6, 7, 8, 9],
+        [10, 11, 12, 13, 14],
+        [15, 16, 17, 18, 19],
+        [20, 21, 22, 23, 24],
+        [0, 5, 10, 15, 20],
+        [1, 6, 11, 16, 21],
+        [2, 7, 12, 17, 22],
+        [3, 8, 13, 18, 23],
+        [4, 9, 14, 19, 24],
+        [0, 6, 12, 18, 24],
+        [4, 8, 12, 16, 20]
+      ]);
+  
+  
+  function checkWinner(index, player) {
+    setCountLines(0);
+    if (player === "Player") {
+      setLines((prevLines) => {
+        const playerLines = JSON.parse(JSON.stringify(prevLines));
+        playerLines.forEach((line, lineIndex) => {
+          const filteredLine = line.filter(item => item !== index);
+          if (filteredLine.length === 0) {
+            if (countLines !== 5) {
+              setCountLines((count) => count+1);
+            }
+
+          }
+          playerLines[lineIndex] = filteredLine;
+        });
+        return playerLines;
+      });
+    } else {
+      setLinesPC((prevLines) => {
+        const playerLines = JSON.parse(JSON.stringify(prevLines));
+        playerLines.forEach((line, lineIndex) => {
+          const filteredLine = line.filter(item => item !== index);
+          if (filteredLine.length === 0) {
+            if (countLines !== 5) {
+              setCountLines((count) => count+1);
+            }
+          }
+          playerLines[lineIndex] = filteredLine;
+        });
+        return playerLines;
+      });
+    }
+
+    return showValue();
+  }
 
   useEffect(() => {
     const generateShuffledNumbers = () => {
@@ -90,7 +138,8 @@ export default function Board() {
         return newLineThrough;  
       });
 
-      checkWinner(index, "Player");
+      // TODO: check for opponent
+      let winner = checkWinner(index, "Player");
       return;
     } else if (squares[index] != null) {
       return;
@@ -114,14 +163,31 @@ export default function Board() {
     setPlayStarted(true);
   }
 
+  function showValue() {
+    if (countLines === 1) {
+      return "B";
+    } else if (countLines === 2) {
+      return "BI";
+    } else if (countLines === 3) {
+      return "BIN";
+    } else if (countLines === 4) {
+      return "BING";
+    } else if (countLines > 4){
+      return "BINGO";
+    }
+  }
+
+  function handleProgress() {
+    return instructions;
+  }
+
   return (
     <>
       <div className="status">
         <strong>BINGO</strong>
       </div>
-      <div className="alert alert-warning" role="alert">
-        {instructions}
-      </div>
+
+      <Progress handleProgress={handleProgress}/>
 
       {startVisible && <Start onClick={onStartClick}/>}
 
@@ -139,7 +205,9 @@ export default function Board() {
             </div>
           ))}
 
-      <div style={{ paddingTop: "10px" }}>Opponent Board</div>
+      <Status handleChange={showValue}/>
+          
+      <div style={{ paddingTop: "5px" }}>Opponent Board</div>
           {[0, 1, 2, 3, 4].map((row) => (
             <div key={row} className="board-row">
               {[0, 1, 2, 3, 4].map((col) => (
