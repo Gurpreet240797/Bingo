@@ -26,8 +26,17 @@ function Start ({ onClick }) {
     >Start</button>;
 }
 
-function SquareForPC() {
-  return <button className="square">X</button>;  
+function SquareForPC({ isMarked, value, revealNumbers }) {
+  const styles = isMarked ? { filter: 'invert(100%)' } : {};
+  if (revealNumbers && isMarked) {
+    return <button className="square" style={styles}>{value}</button>;
+  } else if (revealNumbers && !isMarked) {
+    return <button className="square" style={styles}>{value}</button>;
+  } else if (!revealNumbers && isMarked) {
+    return <button className="square" style={styles}>X</button>;
+  } else {
+    return <button className="square">X</button>;
+  }
 }
 
 function Progress({ handleProgress }) {
@@ -43,13 +52,16 @@ function Status({ handleChange }) {
 
 export default function Board() {
   const [squares, setSquares] = useState(Array(25).fill(null));
+  const [lineThrough, setLineThrough] = useState(Array(25).fill(false));
   const [currentValue, setCurrentValue] = useState(1);
   const [startVisible, setStartVisible] = useState(false);
   const [squaresPC, setSquaresPC] = useState(Array(25).fill(null));
+  const [lineThroughPC, setLineThroughPC] = useState(Array(25).fill(false));
   const [instructions, setInstructions] = useState("Click to fill the values in the Box's between 1-25.");
-  const [lineThrough, setLineThrough] = useState(Array(25).fill(false));
   const [playStarted, setPlayStarted] = useState(false);
   const [countLines, setCountLines] = useState(0);
+  const [revealOpponentBoard, setRevealOpponentBoard] = useState(false);
+  // eslint-disable-next-line
   const [lines, setLines] = useState([
         [0, 1, 2, 3, 4],
         [5, 6, 7, 8, 9],
@@ -64,6 +76,7 @@ export default function Board() {
         [0, 6, 12, 18, 24],
         [4, 8, 12, 16, 20]
       ]);
+      // eslint-disable-next-line
   const [linesPC, setLinesPC] = useState([
         [0, 1, 2, 3, 4],
         [5, 6, 7, 8, 9],
@@ -117,6 +130,12 @@ export default function Board() {
   }
 
   useEffect(() => {
+    if (countLines > 4) {
+      setRevealOpponentBoard(true);
+    }
+  }, [countLines]);
+  
+  useEffect(() => {
     const generateShuffledNumbers = () => {
       const numbers = Array.from({ length: 25 }, (_, index) => index + 1);
       // Shuffle the numbers using Fisher-Yates algorithm
@@ -132,14 +151,42 @@ export default function Board() {
 
   function handleClick(index) {
     if (squares[index] != null && currentValue === 25 && playStarted === true) {
+      
+      /* TODO 
+        1. Mark the cell for Player
+        2. Mark the cell for Opponent
+        3. Check if Player or Opponent won the game
+        4. Show banner for the win or lose to the player
+        5. Show or take turn to select the cell (Random) 
+      */
+      
+      // 1.
       setLineThrough((prevLineThrough) => {
         const newLineThrough = [...prevLineThrough];
         newLineThrough[index] = true;
         return newLineThrough;  
       });
+      // eslint-disable-next-line
+      let winner = checkWinner(index, "Player");
+
+
+      // 2. 
+      setLineThroughPC((prevLineThroughPC) => {
+        const newLineThroughPC = [...prevLineThroughPC];
+        let value = squares[index];
+        let foundIndexAt = 0;
+        squaresPC.forEach((element, ind) => {
+          if (element === value) {
+            foundIndexAt = ind;
+          }
+        });
+        newLineThroughPC[foundIndexAt] = true;
+        return newLineThroughPC;
+      });
+
 
       // TODO: check for opponent
-      let winner = checkWinner(index, "Player");
+      
       return;
     } else if (squares[index] != null) {
       return;
@@ -214,6 +261,8 @@ export default function Board() {
                 <SquareForPC
                   key={col}
                   value={squaresPC[row * 5 + col]}
+                  isMarked={lineThroughPC[row * 5 + col]}
+                  revealNumbers={revealOpponentBoard}
                 />
               ))}
             </div>
