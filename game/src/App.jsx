@@ -40,11 +40,10 @@ function SquareForPC({ isMarked, value, revealNumbers }) {
 }
 
 function Progress({ handleProgress }) {
-  return <div className="alert alert-warning" 
-          role="alert">
-          {handleProgress()}
-      </div>
-}
+  const message = handleProgress().message;
+  const banner = handleProgress().banner;
+  return <div className={banner} role="alert">{message}</div>
+}    
 
 function Status({ handleChange }) {
   return <h1 className="badge bg-success"style={{ "marginTop": "10px"}}>{handleChange()}</h1>
@@ -60,7 +59,9 @@ export default function Board() {
   const [instructions, setInstructions] = useState("Click to fill the values in the Box's between 1-25.");
   const [playStarted, setPlayStarted] = useState(false);
   const [countLines, setCountLines] = useState(0);
+  const [countLinesPC, setCountLinesPC] = useState(0);
   const [revealOpponentBoard, setRevealOpponentBoard] = useState(false);
+  const [numbersSelected, setNumbersSelected] = useState([]);
   // eslint-disable-next-line
   const [lines, setLines] = useState([
         [0, 1, 2, 3, 4],
@@ -92,33 +93,28 @@ export default function Board() {
         [4, 8, 12, 16, 20]
       ]);
   
-  
   function checkWinner(index, player) {
-    setCountLines(0);
     if (player === "Player") {
+      setCountLines(0);
       setLines((prevLines) => {
         const playerLines = JSON.parse(JSON.stringify(prevLines));
         playerLines.forEach((line, lineIndex) => {
           const filteredLine = line.filter(item => item !== index);
           if (filteredLine.length === 0) {
-            if (countLines !== 5) {
-              setCountLines((count) => count+1);
-            }
-
+            setCountLines((count) => count + 1);
           }
           playerLines[lineIndex] = filteredLine;
         });
         return playerLines;
       });
     } else {
+      setCountLinesPC(0);
       setLinesPC((prevLines) => {
         const playerLines = JSON.parse(JSON.stringify(prevLines));
         playerLines.forEach((line, lineIndex) => {
           const filteredLine = line.filter(item => item !== index);
-          if (filteredLine.length === 0) {
-            if (countLines !== 5) {
-              setCountLines((count) => count+1);
-            }
+          if (filteredLine.length === 0 && countLinesPC < 5) {
+            setCountLinesPC((count) => count + 1);
           }
           playerLines[lineIndex] = filteredLine;
         });
@@ -126,15 +122,15 @@ export default function Board() {
       });
     }
 
-    return showValue();
-  }
+  return showValue();
+}
 
   useEffect(() => {
     if (countLines > 4) {
       setRevealOpponentBoard(true);
     }
   }, [countLines]);
-  
+
   useEffect(() => {
     const generateShuffledNumbers = () => {
       const numbers = Array.from({ length: 25 }, (_, index) => index + 1);
@@ -149,9 +145,59 @@ export default function Board() {
     setSquaresPC(generateShuffledNumbers());
   }, []);
 
+  function getRandomInt(exclude) {
+    let num;
+    let min = 1;
+    let max = 25;
+
+    do {
+      num = Math.floor(Math.random() * (max - min + 1)) + min;
+    } while (exclude.includes(num));
+
+    setNumbersSelected((prevArr) => {
+      const newArr = [...prevArr];
+      newArr.push(num);
+      return newArr;
+    });
+
+    let foundIndexAt = 0;
+    setLineThroughPC((prevLineThroughPC) => {
+        const newLineThroughPC = [...prevLineThroughPC];
+        
+        squaresPC.forEach((element, ind) => {
+          if (element === num) {
+            foundIndexAt = ind;
+          }
+        });
+        
+        newLineThroughPC[foundIndexAt] = true;
+        return newLineThroughPC;
+      });
+      checkWinner(foundIndexAt, "Opponent");
+
+      let index = null;
+      setLineThrough((prevLineThrough) => {
+        const newLineThrough = [...prevLineThrough];
+        
+        squares.forEach((element, ind) => {
+          if (element === num) index = ind;
+        });
+        newLineThrough[index] = true;
+        return newLineThrough;  
+      });
+      // eslint-disable-next-line
+      let winner = checkWinner(index, "Player");
+    return num;
+  }
+
+
   function handleClick(index) {
     if (squares[index] != null && currentValue === 25 && playStarted === true) {
-      
+      setNumbersSelected((prevNumbers) => {
+        const newNumbers = [...prevNumbers];
+        newNumbers.push(squares[index]);
+        return newNumbers;
+      })
       /* TODO 
         1. Mark the cell for Player
         2. Mark the cell for Opponent
@@ -171,10 +217,11 @@ export default function Board() {
 
 
       // 2. 
+      let foundIndexAt = null;
       setLineThroughPC((prevLineThroughPC) => {
         const newLineThroughPC = [...prevLineThroughPC];
         let value = squares[index];
-        let foundIndexAt = 0;
+        
         squaresPC.forEach((element, ind) => {
           if (element === value) {
             foundIndexAt = ind;
@@ -183,9 +230,9 @@ export default function Board() {
         newLineThroughPC[foundIndexAt] = true;
         return newLineThroughPC;
       });
-
-
-      // TODO: check for opponent
+      winner = checkWinner(foundIndexAt, "Opponent");
+      // TODO: randomly generate values for Opponents
+      //let num = getRandomInt(numbersSelected);
       
       return;
     } else if (squares[index] != null) {
@@ -219,13 +266,28 @@ export default function Board() {
       return "BIN";
     } else if (countLines === 4) {
       return "BING";
-    } else if (countLines > 4){
+    } else if (countLines >= 5){
       return "BINGO";
     }
   }
 
   function handleProgress() {
-    return instructions;
+    let obj = {message: null, banner: null};
+
+    if (countLines > 4) {
+      obj.message = "You Won :)";
+      obj.banner = "alert alert-success";
+      return obj;
+    }
+    else if (countLinesPC > 4) {
+      obj.message = "You Lost :(";
+      obj.banner = "alert alert-danger";
+      return obj;
+    } else {
+      obj.message = instructions;
+      obj.banner = "alert alert-warning";
+      return obj;
+    }
   }
 
   return (
